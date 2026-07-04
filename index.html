@@ -211,7 +211,28 @@
       border-radius: 50%;
       right: -7px; bottom: -7px;
       cursor: nwse-resize;
+      z-index: 5;
     }
+
+    .rotate-handle {
+      position: absolute;
+      width: 16px; height: 16px;
+      background: #9966ff;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      left: 50%; top: -28px;
+      transform: translateX(-50%);
+      cursor: grab;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; color: #fff;
+      z-index: 5;
+    }
+    .rotate-handle:active { cursor: grabbing; }
+
+    #drawLayer { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+
+    .tool-btn.active { background: rgba(107, 138, 255, 0.2); border-color: var(--accent-blue); color: var(--accent-cyan); }
+    .tool-range { width: 90px; accent-color: #6b8aff; }
 
     .design-hint { font-size: 0.72rem; color: var(--text); opacity: 0.55; margin-top: 10px; text-align: center; }
 
@@ -319,6 +340,9 @@
   <!-- ============ PAGE 3: DESIGN ============ -->
   <section class="page" id="page-design">
     <div class="design-toolbar">
+      <button class="tool-btn" id="selectToolBtn" onclick="setDrawMode(false)">🖱 Курсор</button>
+      <button class="tool-btn" id="drawToolBtn" onclick="setDrawMode(true)">✏️ Рисовать</button>
+      <input type="range" class="tool-range" id="lineWidth" min="1" max="20" value="4" title="Толщина линии"/>
       <button class="tool-btn" onclick="addShape('rect')">▭ Прямоугольник</button>
       <button class="tool-btn" onclick="addShape('circle')">◯ Круг</button>
       <button class="tool-btn" onclick="addShape('text')">🔤 Текст</button>
@@ -331,8 +355,8 @@
       <button class="tool-btn" onclick="exportCanvas()">⬇ Экспорт PNG</button>
     </div>
     <input type="file" id="imageUploadInput" accept="image/*" style="display:none" onchange="handleImageUpload(event)"/>
-    <div id="canvasWrap"></div>
-    <div class="design-hint">Перетаскивайте элементы, тяните за синюю точку для изменения размера. Клик — выделить.</div>
+    <div id="canvasWrap"><canvas id="drawLayer"></canvas></div>
+    <div class="design-hint">Перетаскивайте элементы, синяя точка — размер, фиолетовая — поворот. Два пальца на элементе — зум/поворот (мобильные).</div>
   </section>
 
 </div>
@@ -387,6 +411,8 @@
     document.getElementById('pageSubtitle').textContent = pageMeta[name].subtitle;
   }
 
+
+
   /* ================= TASKS ================= */
   let tasks = JSON.parse(localStorage.getItem('tasks_manager') || '[]');
   let currentColor = 'green';
@@ -413,4 +439,526 @@
 
     const circumference = 2 * Math.PI * 50;
     const offset = circumference - (percentage / 100) * circumference;
-    document.getElementById('progressCircle').style.strokeDashoffset 
+    document.getElementById('progressCircle').style.strokeDashoffset = offset;
+  }
+
+  function setFilter(filter, e) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+    if (e && e.target) e.target.classList.add('active');
+    renderTasks();
+  }
+
+  function setColor(color) {
+    currentColor = color;
+    document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+    document.querySelector(`[data-color="${color}"]`).classList.add('active');
+  }
+
+  function addTask() {
+    const input = document.getElementById('noteInput');
+    const text = input.value.trim();
+    if (!text) { input.focus(); return; }
+    tasks.unshift({ id: Date.now().toString(), text, color: currentColor, completed: false, createdAt: Date.now() });
+    saveTasks();
+    input.value = '';
+    input.focus();
+  }
+
+  document.getElementById('noteInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTask(); }
+  });
+
+  function toggleTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (task) { task.completed = !task.completed; saveTasks(); }
+  }
+
+  function deleteTask(id) {
+    const card = document.querySelector(`#tasksList [data-id="${id}"]`);
+    if (card) {
+      card.style.opacity = '0';
+      card.style.transform = 'scale(0.93)';
+      card.style.transition = 'opacity 0.2s, transform 0.2s';
+      setTimeout(() => { tasks = tasks.filter(t => t.id !== id); saveTasks(); }, 200);
+    }
+  }
+
+  function renderTasks() {
+    const list = document.getElementById('tasksList');
+    list.innerHTML = '';
+    let filtered = tasks;
+    if (currentFilter === 'active') filtered = tasks.filter(t => !t.completed);
+    else if (currentFilter === 'completed') filtered = tasks.filter(t => t.completed);
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="empty"><div class="empty-star">✨</div><div class="empty-title">Список задач пуст</div></div>`;
+      return;
+    }
+
+    filtered.forEach(task => {
+      const card = document.createElement('div');
+      card.className = 'card' + (task.completed ? ' completed' : '');
+      card.dataset.id = task.id;
+
+      const colorDiv = document.createElement('div');
+      colorDiv.className = `card-color ${task.color || 'green'}`;
+
+      const checkbox = document.createElement('div');
+      checkbox.className = 'card-checkbox';
+      checkbox.innerHTML = task.completed ? '✓' : '';
+      checkbox.onclick = (e) => { e.stopPropagation(); toggleTask(task.id); };
+      card.onclick = () => toggleTask(task.id);
+
+      const textDiv = document.createElement('div');
+      textDiv.className = 'card-text';
+      textDiv.textContent = task.text;
+
+      const actions = document.createElement('div');
+      actions.className = 'card-actions';
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-icon delete';
+      delBtn.innerHTML = '🗑';
+      delBtn.onclick = (e) => { e.stopPropagation(); deleteTask(task.id); };
+      actions.appendChild(delBtn);
+
+      card.appendChild(colorDiv);
+      card.appendChild(checkbox);
+      card.appendChild(textDiv);
+      card.appendChild(actions);
+      list.appendChild(card);
+    });
+  }
+
+  /* ================= NOTES ================= */
+  let notesData = JSON.parse(localStorage.getItem('notes_page') || '[]');
+
+  function saveNotes() {
+    localStorage.setItem('notes_page', JSON.stringify(notesData));
+    renderNotes();
+  }
+
+  function formatDate(ts) {
+    const d = new Date(ts);
+    return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'short', year:'numeric' }) + ' · ' + d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function addNoteEntry() {
+    const input = document.getElementById('noteTextInput');
+    const text = input.value.trim();
+    if (!text) { input.focus(); return; }
+    notesData.unshift({ id: Date.now().toString(), text, createdAt: Date.now() });
+    saveNotes();
+    input.value = '';
+    input.focus();
+  }
+
+  document.getElementById('noteTextInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addNoteEntry(); }
+  });
+
+  function deleteNoteEntry(id) {
+    const card = document.querySelector(`#notesList [data-id="${id}"]`);
+    if (card) {
+      card.style.opacity = '0';
+      card.style.transform = 'scale(0.93)';
+      card.style.transition = 'opacity 0.2s, transform 0.2s';
+      setTimeout(() => { notesData = notesData.filter(n => n.id !== id); saveNotes(); }, 200);
+    }
+  }
+
+  function editNoteEntry(id, card, textDiv) {
+    const note = notesData.find(n => n.id === id);
+    if (!note) return;
+    const ta = document.createElement('textarea');
+    ta.className = 'edit-area';
+    ta.value = note.text;
+    textDiv.replaceWith(ta);
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    const finish = () => {
+      const newText = ta.value.trim();
+      if (newText) note.text = newText;
+      saveNotes();
+    };
+    ta.onblur = finish;
+  }
+
+  function renderNotes() {
+    const list = document.getElementById('notesList');
+    list.innerHTML = '';
+
+    if (notesData.length === 0) {
+      list.innerHTML = `<div class="empty"><div class="empty-star">🗒️</div><div class="empty-title">Заметок пока нет</div></div>`;
+      return;
+    }
+
+    notesData.forEach(note => {
+      const card = document.createElement('div');
+      card.className = 'card note-card';
+      card.dataset.id = note.id;
+
+      const header = document.createElement('div');
+      header.className = 'note-header';
+
+      const dateEl = document.createElement('span');
+      dateEl.className = 'note-date';
+      dateEl.textContent = formatDate(note.createdAt);
+
+      const actions = document.createElement('div');
+      actions.className = 'card-actions';
+
+      const textDiv = document.createElement('div');
+      textDiv.className = 'note-text';
+      textDiv.textContent = note.text;
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-icon';
+      editBtn.innerHTML = '✏️';
+      editBtn.onclick = () => editNoteEntry(note.id, card, textDiv);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-icon delete';
+      delBtn.innerHTML = '🗑';
+      delBtn.onclick = () => deleteNoteEntry(note.id);
+
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      header.appendChild(dateEl);
+      header.appendChild(actions);
+
+      card.appendChild(header);
+      card.appendChild(textDiv);
+      list.appendChild(card);
+    });
+  }
+
+  /* ================= DESIGN EDITOR ================= */
+  let selectedEl = null;
+  let elIdCounter = 1;
+  let drawMode = false;
+
+  const canvasWrap = document.getElementById('canvasWrap');
+  const drawLayer = document.getElementById('drawLayer');
+  const drawCtx = drawLayer.getContext('2d');
+  const lineWidthInput = document.getElementById('lineWidth');
+  const colorPicker = document.getElementById('colorPicker');
+
+  function sizeDrawLayer() {
+    const rect = canvasWrap.getBoundingClientRect();
+    // preserve existing drawing when resizing
+    const prev = drawLayer.width ? drawLayer.toDataURL() : null;
+    drawLayer.width = rect.width;
+    drawLayer.height = rect.height;
+    if (prev) {
+      const img = new Image();
+      img.onload = () => drawCtx.drawImage(img, 0, 0, rect.width, rect.height);
+      img.src = prev;
+    }
+  }
+  window.addEventListener('load', sizeDrawLayer);
+  window.addEventListener('resize', sizeDrawLayer);
+  setTimeout(sizeDrawLayer, 300);
+
+  function setDrawMode(on) {
+    drawMode = on;
+    document.getElementById('drawToolBtn').classList.toggle('active', on);
+    document.getElementById('selectToolBtn').classList.toggle('active', !on);
+    drawLayer.style.pointerEvents = on ? 'auto' : 'none';
+    if (on) {
+      canvasWrap.appendChild(drawLayer); // bring to front so strokes land on top
+      if (selectedEl) { selectedEl.classList.remove('selected'); selectedEl = null; }
+    } else {
+      canvasWrap.insertBefore(drawLayer, canvasWrap.firstChild); // send to back
+    }
+  }
+  setDrawMode(false);
+
+  // Freehand drawing (pointer events unify mouse + touch + pen)
+  let isDrawing = false, lastX = 0, lastY = 0;
+  drawLayer.addEventListener('pointerdown', (e) => {
+    if (!drawMode) return;
+    isDrawing = true;
+    const rect = drawLayer.getBoundingClientRect();
+    lastX = e.clientX - rect.left;
+    lastY = e.clientY - rect.top;
+    drawLayer.setPointerCapture(e.pointerId);
+  });
+  drawLayer.addEventListener('pointermove', (e) => {
+    if (!isDrawing || !drawMode) return;
+    const rect = drawLayer.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    drawCtx.strokeStyle = colorPicker.value;
+    drawCtx.lineWidth = lineWidthInput.value;
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+    drawCtx.beginPath();
+    drawCtx.moveTo(lastX, lastY);
+    drawCtx.lineTo(x, y);
+    drawCtx.stroke();
+    lastX = x; lastY = y;
+  });
+  drawLayer.addEventListener('pointerup', () => { isDrawing = false; });
+  drawLayer.addEventListener('pointerleave', () => { isDrawing = false; });
+
+  function addShape(type) {
+    const id = 'el' + (elIdCounter++);
+    const el = document.createElement('div');
+    el.className = 'canvas-el';
+    el.dataset.id = id;
+    el.dataset.rotation = '0';
+    el.style.left = '40px';
+    el.style.top = '40px';
+
+    if (type === 'rect') {
+      el.style.width = '120px';
+      el.style.height = '80px';
+      el.style.background = '#6b8aff';
+      el.dataset.type = 'rect';
+    } else if (type === 'circle') {
+      el.style.width = '100px';
+      el.style.height = '100px';
+      el.style.background = '#9966ff';
+      el.style.borderRadius = '50%';
+      el.dataset.type = 'circle';
+    } else if (type === 'text') {
+      el.style.width = '160px';
+      el.style.height = '40px';
+      el.dataset.type = 'text';
+      el.dataset.fontSize = '16';
+      const txt = document.createElement('div');
+      txt.className = 'text-content';
+      txt.contentEditable = 'true';
+      txt.style.fontSize = '16px';
+      txt.textContent = 'Текст';
+      el.appendChild(txt);
+    }
+
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    const rotateHandle = document.createElement('div');
+    rotateHandle.className = 'rotate-handle';
+    rotateHandle.innerHTML = '↻';
+    el.appendChild(handle);
+    el.appendChild(rotateHandle);
+
+    attachInteractions(el, handle, rotateHandle);
+    canvasWrap.appendChild(el);
+    setDrawMode(false);
+    selectElement(el);
+  }
+
+  function triggerImageUpload() {
+    document.getElementById('imageUploadInput').click();
+  }
+
+  function handleImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const id = 'el' + (elIdCounter++);
+      const el = document.createElement('div');
+      el.className = 'canvas-el';
+      el.dataset.id = id;
+      el.dataset.type = 'image';
+      el.dataset.rotation = '0';
+      el.style.left = '40px';
+      el.style.top = '40px';
+      el.style.width = '160px';
+      el.style.height = '120px';
+
+      const img = document.createElement('img');
+      img.src = ev.target.result;
+      el.appendChild(img);
+
+      const handle = document.createElement('div');
+      handle.className = 'resize-handle';
+      const rotateHandle = document.createElement('div');
+      rotateHandle.className = 'rotate-handle';
+      rotateHandle.innerHTML = '↻';
+      el.appendChild(handle);
+      el.appendChild(rotateHandle);
+
+      attachInteractions(el, handle, rotateHandle);
+      canvasWrap.appendChild(el);
+      setDrawMode(false);
+      selectElement(el);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  function selectElement(el) {
+    if (selectedEl) selectedEl.classList.remove('selected');
+    selectedEl = el;
+    el.classList.add('selected');
+  }
+
+  canvasWrap.addEventListener('click', (e) => {
+    if (e.target === canvasWrap) {
+      if (selectedEl) selectedEl.classList.remove('selected');
+      selectedEl = null;
+    }
+  });
+
+  function applyRotation(el, deg) {
+    el.dataset.rotation = deg;
+    el.style.transform = `rotate(${deg}deg)`;
+  }
+
+  function attachInteractions(el, handle, rotateHandle) {
+    // ---- Desktop: drag to move ----
+    el.addEventListener('mousedown', (e) => {
+      if (e.target === handle || e.target === rotateHandle) return;
+      if (e.target.classList.contains('text-content')) { selectElement(el); return; }
+      e.preventDefault();
+      selectElement(el);
+      const startX = e.clientX, startY = e.clientY;
+      const startLeft = el.offsetLeft, startTop = el.offsetTop;
+
+      function onMove(ev) {
+        const dx = ev.clientX - startX, dy = ev.clientY - startY;
+        let newLeft = startLeft + dx, newTop = startTop + dy;
+        newLeft = Math.max(0, Math.min(newLeft, canvasWrap.clientWidth - el.offsetWidth));
+        newTop = Math.max(0, Math.min(newTop, canvasWrap.clientHeight - el.offsetHeight));
+        el.style.left = newLeft + 'px';
+        el.style.top = newTop + 'px';
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    // ---- Desktop: resize handle ----
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectElement(el);
+      const startX = e.clientX, startY = e.clientY;
+      const startW = el.offsetWidth, startH = el.offsetHeight;
+
+      function onMove(ev) {
+        const dx = ev.clientX - startX, dy = ev.clientY - startY;
+        el.style.width = Math.max(30, startW + dx) + 'px';
+        el.style.height = Math.max(30, startH + dy) + 'px';
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    // ---- Desktop: rotate handle ----
+    rotateHandle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectElement(el);
+      const rect = el.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const startRotation = parseFloat(el.dataset.rotation || '0');
+      const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+
+      function onMove(ev) {
+        const angle = Math.atan2(ev.clientY - centerY, ev.clientX - centerX) * 180 / Math.PI;
+        applyRotation(el, startRotation + (angle - startAngle));
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    // ---- Touch: 1 finger move only (tracked by its own touch ID) ----
+    el.addEventListener('touchstart', (e) => {
+      if (e.target === handle || e.target === rotateHandle) return;
+      if (e.touches.length !== 1) return; // 2-finger gestures are handled at canvasWrap level
+      selectElement(el);
+
+      const touchId = e.changedTouches[0].identifier;
+      const touch = e.changedTouches[0];
+      const startX = touch.clientX, startY = touch.clientY;
+      const startLeft = el.offsetLeft, startTop = el.offsetTop;
+
+      function onMove(ev) {
+        const t = getTouchById(ev.touches, touchId);
+        if (!t) return;
+        const dx = t.clientX - startX, dy = t.clientY - startY;
+        let newLeft = startLeft + dx, newTop = startTop + dy;
+        newLeft = Math.max(0, Math.min(newLeft, canvasWrap.clientWidth - el.offsetWidth));
+        newTop = Math.max(0, Math.min(newTop, canvasWrap.clientHeight - el.offsetHeight));
+        el.style.left = newLeft + 'px';
+        el.style.top = newTop + 'px';
+      }
+      function onEnd(ev) {
+        if (!getTouchById(ev.touches, touchId)) {
+          document.removeEventListener('touchmove', onMove);
+          document.removeEventListener('touchend', onEnd);
+        }
+      }
+      document.addEventListener('touchmove', onMove, { passive: true });
+      document.addEventListener('touchend', onEnd);
+    }, { passive: false });
+
+    // ---- Touch: resize handle (tracked by its own touch ID) ----
+    handle.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectElement(el);
+      const touchId = e.changedTouches[0].identifier;
+      const touch = e.changedTouches[0];
+      const startX = touch.clientX, startY = touch.clientY;
+      const startW = el.offsetWidth, startH = el.offsetHeight;
+
+      function onMove(ev) {
+        const t = getTouchById(ev.touches, touchId);
+        if (!t) return;
+        const dx = t.clientX - startX, dy = t.clientY - startY;
+        el.style.width = Math.max(30, startW + dx) + 'px';
+        el.style.height = Math.max(30, startH + dy) + 'px';
+      }
+      function onEnd(ev) {
+        if (!getTouchById(ev.touches, touchId)) {
+          document.removeEventListener('touchmove', onMove);
+          document.removeEventListener('touchend', onEnd);
+        }
+      }
+      document.addEventListener('touchmove', onMove, { passive: true });
+      document.addEventListener('touchend', onEnd);
+    }, { passive: false });
+
+    // ---- Touch: rotate handle (tracked by its own touch ID) ----
+    rotateHandle.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectElement(el);
+      const rect = el.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const startRotation = parseFloat(el.dataset.rotation || '0');
+      const touchId = e.changedTouches[0].identifier;
+      const touch = e.changedTouches[0];
+      const startAngle = Math.atan2(touch.clientY - centerY, touch.clientX - centerX) * 180 / Math.PI;
+
+      function onMove(ev) {
+        const t = getTouchById(ev.touches, touchId);
+        if (!t) return;
+        const angle = Math.atan2(t.clientY - centerY, t.clientX - centerX) * 180 / Math.PI;
+        applyRotation(el, startRotation + (angle - startAngle));
+      }
+      function onEnd(ev) {
+        if (!getTouchById(ev.touches, touchId)) {
+          document.removeEventListener('touchmove', onMove);
+          document.removeEventListener('touchend', onEnd);
+        }
+      }
+      document.addEventListener('touchmove', onMove, { passive: true });
+      document.addEventListener(
