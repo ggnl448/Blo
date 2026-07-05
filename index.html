@@ -411,8 +411,6 @@
     document.getElementById('pageSubtitle').textContent = pageMeta[name].subtitle;
   }
 
-
-
   /* ================= TASKS ================= */
   let tasks = JSON.parse(localStorage.getItem('tasks_manager') || '[]');
   let currentColor = 'green';
@@ -961,4 +959,8 @@
         }
       }
       document.addEventListener('touchmove', onMove, { passive: true });
-      document.addEventListener(
+      document.addEventListener('touchend', onEnd);
+    }, { passive: false });
+  }
+
+ 
