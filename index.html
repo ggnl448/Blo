@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Tasks & Notes & Design</title>
   !-- ===== STRICT XSS / CONTENT SECURITY DEFENSE =====
-       - No inline scripts or event-handler attributes anywhere in this document
-         (all onclick/onchange were removed; everything binds via addEventListener).
-         This lets us enforce a script-src with NO 'unsafe-inline', so even if an
-         attacker manages to inject an onclick="..." or <script> tag into the DOM,
+ <script> tag into the DOM,
          the browser will refuse to execute it.
        - object-src / base-uri / form-action are locked to 'none' to block classic
          injection pivots (plugin embeds, <base> hijacking, form-action hijacking).
