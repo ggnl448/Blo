@@ -875,7 +875,7 @@
       document.addEventListener('mouseup', onUp);
     });
 
-    // ---- Touch: 1 finger move only (tracked by its own touch ID) ----
+     // ---- Touch: 1 finger move only (tracked by its own touch ID) ----
     el.addEventListener('touchstart', (e) => {
       if (e.target === handle || e.target === rotateHandle) return;
       if (e.touches.length !== 1) return; // 2-finger gestures are handled at canvasWrap level
@@ -963,4 +963,123 @@
     }, { passive: false });
   }
 
- 
+  // Helper: find a specific touch by its identifier within a TouchList
+  function getTouchById(touchList, id) {
+    for (let i = 0; i < touchList.length; i++) {
+      if (touchList[i].identifier === id) return touchList[i];
+    }
+    return null;
+  }
+
+  // ---- Touch: 2-finger pinch-zoom + rotate — acts ONLY on the selected element,
+  // and ONLY uses the two touch IDs that started this specific gesture ----
+  canvasWrap.addEventListener('touchstart', (e) => {
+    if (drawMode) return;
+    if (e.touches.length !== 2 || !selectedEl) return;
+    e.preventDefault();
+    const el = selectedEl;
+
+    const id1 = e.touches[0].identifier;
+    const id2 = e.touches[1].identifier;
+    const t1 = e.touches[0], t2 = e.touches[1];
+    const initDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    const initAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * 180 / Math.PI;
+    const type = el.dataset.type;
+    const startFontSize = parseFloat(el.dataset.fontSize || '16');
+    const startW = el.offsetWidth, startH = el.offsetHeight;
+    const startRotation = parseFloat(el.dataset.rotation || '0');
+
+    function onMove(ev) {
+      const a = getTouchById(ev.touches, id1);
+      const b = getTouchById(ev.touches, id2);
+      if (!a || !b) return; // one of the original two fingers lifted — ignore
+      const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+      const angle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+      const scale = dist / initDist;
+
+      if (type === 'text') {
+        const newSize = Math.min(200, Math.max(8, startFontSize * scale));
+        el.dataset.fontSize = newSize;
+        const txt = el.querySelector('.text-content');
+        if (txt) txt.style.fontSize = newSize + 'px';
+      } else {
+        el.style.width = Math.max(20, startW * scale) + 'px';
+        el.style.height = Math.max(20, startH * scale) + 'px';
+      }
+      applyRotation(el, startRotation + (angle - initAngle));
+    }
+    function onEnd(ev) {
+      if (!getTouchById(ev.touches, id1) || !getTouchById(ev.touches, id2)) {
+        canvasWrap.removeEventListener('touchmove', onMove);
+        canvasWrap.removeEventListener('touchend', onEnd);
+      }
+    }
+    canvasWrap.addEventListener('touchmove', onMove, { passive: false });
+    canvasWrap.addEventListener('touchend', onEnd);
+  }, { passive: false });
+
+  function applyColor(color) {
+    if (!selectedEl) return;
+    const type = selectedEl.dataset.type;
+    if (type === 'text') {
+      const txt = selectedEl.querySelector('.text-content');
+      if (txt) txt.style.color = color;
+    } else if (type === 'rect' || type === 'circle') {
+      selectedEl.style.background = color;
+    }
+  }
+
+  function bringForward() {
+    if (!selectedEl) return;
+    canvasWrap.appendChild(selectedEl);
+    if (drawMode) canvasWrap.appendChild(drawLayer);
+  }
+
+  function sendBackward() {
+    if (!selectedEl) return;
+    canvasWrap.insertBefore(selectedEl, canvasWrap.firstChild);
+  }
+
+  function deleteSelected() {
+    if (!selectedEl) return;
+    selectedEl.remove();
+    selectedEl = null;
+  }
+
+  function clearCanvas() {
+    if (confirm('Очистить всё полотно?')) {
+      document.querySelectorAll('.canvas-el').forEach(el => el.remove());
+      drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height);
+      selectedEl = null;
+    }
+  }
+
+  function exportCanvas() {
+    if (selectedEl) selectedEl.classList.remove('selected');
+
+    // Hide all resize/rotate handles so they don't get baked into the exported image
+    const handles = canvasWrap.querySelectorAll('.resize-handle, .rotate-handle');
+    handles.forEach(h => h.style.display = 'none');
+
+    html2canvas(canvasWrap, { backgroundColor: '#ffffff' }).then(canvas => {
+      handles.forEach(h => h.style.display = '');
+      if (selectedEl) selectedEl.classList.add('selected');
+
+      const link = document.createElement('a');
+      link.download = 'design-' + Date.now() + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }).catch(() => {
+      // Ensure handles are restored even if export fails
+      handles.forEach(h => h.style.display = '');
+      if (selectedEl) selectedEl.classList.add('selected');
+    });
+  }
+
+  /* ================= INIT ================= */
+  updateStats();
+  renderTasks();
+  renderNotes();
+</script>
+</body>
+</html>  
