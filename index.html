@@ -4,7 +4,42 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Tasks & Notes & Design</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  !-- ===== STRICT XSS / CONTENT SECURITY DEFENSE =====
+       - No inline scripts or event-handler attributes anywhere in this document
+         (all onclick/onchange were removed; everything binds via addEventListener).
+         This lets us enforce a script-src with NO 'unsafe-inline', so even if an
+         attacker manages to inject an onclick="..." or <script> tag into the DOM,
+         the browser will refuse to execute it.
+       - object-src / base-uri / form-action are locked to 'none' to block classic
+         injection pivots (plugin embeds, <base> hijacking, form-action hijacking).
+       - The only external script (html2canvas) is pinned to this exact file via
+         a Subresource Integrity hash, so even if the CDN were compromised, a
+         swapped/malicious file would fail to load.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: blob:;
+    font-src 'self';
+    connect-src 'none';
+    media-src 'none';
+    object-src 'none';
+    base-uri 'none';
+    form-action 'none';
+    frame-src 'none';
+    worker-src 'none';
+  ">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+    integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer">
+  </script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
