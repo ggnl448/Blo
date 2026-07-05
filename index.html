@@ -300,9 +300,19 @@
 
 <div id="securityBadge">🔒 STRICT XSS PROTECTION / CONTENT SECURITY</div>
 <div id="connWarning">⚠️ Проверьте подключение к интернету</div>
-  ); color: var(--accent-blue); border-color: var(--accent-blue); }
-    .btn-icon.delete:hover { background: rgba(248, 113, 113, 0.1); color: #f87171; border-color: #f87171; }
+  /* Стили для активной или базовой иконки-кнопки */
+.btn-icon.active { 
+    color: var(--accent-blue); 
+    border-color: var(--accent-blue); 
+}
 
+/* Стили для кнопки удаления при наведении */
+.btn-icon.delete:hover { 
+    background: rgba(248, 113, 113, 0.1); 
+    color: #f87171; 
+    border-color: #f87171; 
+}
+  
     .note-card { flex-direction: column; align-items: stretch; cursor: default; }
     .note-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .note-text { font-size: 0.88rem; color: var(--text-light); line-height: 1.55; white-space: pre-wrap; word-break: break-word; margin-top: 6px; }
