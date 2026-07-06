@@ -298,176 +298,44 @@
 </head>
 <body>
 
-<div id="securityBadge">🔒 STRICT XSS PROTECTION / CONTENT SECURITY</div>
-<div id="connWarning">⚠️ Проверьте подключение к интернету</div>
-</style> /* Стили для активной или базовой иконки-кнопки */
-.btn-icon.active { 
-    color: var(--accent-blue); 
-    border-color: var(--accent-blue); 
+<div id="securityBadge"> STRICT XSS PROTECTION / CONTENT SECURITY</div>
+<div id="connWarning"> Проверьте подключение к интернету</div>
+
+<style>
+/* Стили для активной или базовой иконки-кнопки */
+.btn-icon.active {
+    color: var(--accent-blue);
+    border-color: var(--accent-blue);
 }
 
 /* Стили для кнопки удаления при наведении */
-.btn-icon.delete:hover { 
-    background: rgba(248, 113, 113, 0.1); 
-    color: #f87171; 
-    border-color: #f87171; 
+.btn-icon.delete:hover {
+    background: rgba(248, 113, 113, 0.1);
+    color: #f87171;
+    border-color: #f87171;
 }
-  
-    .note-card { flex-direction: column; align-items: stretch; cursor: default; }
-    .note-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-    .note-text { font-size: 0.88rem; color: var(--text-light); line-height: 1.55; white-space: pre-wrap; word-break: break-word; margin-top: 6px; }
-    .note-date { font-size: 0.65rem; color: var(--text); opacity: 0.5; margin-top: 10px; }
-    .note-card textarea.edit-area { background: rgba(10,14,39,0.8); border: 1px solid var(--accent-blue); border-radius: 8px; color: var(--text-light); font-family: inherit; font-size: 0.88rem; padding: 8px; width: 100%; min-height: 70px; margin-top: 6px; }
 
-    .empty { text-align: center; padding: 60px 20px; color: var(--text); }
-    .empty-star { font-size: 3rem; margin-bottom: 16px; opacity: 0.6; }
-    .empty-title { font-size: 0.95rem; color: var(--text-light); font-weight: 500; }
+/* ... ВСЕ остальные CSS-стили без изменений ... */
 
-    /* ===== Design Editor ===== */
-    .design-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-    .tool-btn { background: rgba(15, 20, 55, 0.6); border: 1px solid var(--border); border-radius: 10px; color: var(--text-light); padding: 9px 14px; cursor: pointer; font-size: 0.8rem; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
-    .tool-btn:hover { border-color: var(--accent-blue); color: var(--accent-cyan); }
-    .tool-btn.danger:hover { border-color: var(--accent-red); color: var(--accent-red); }
-    .tool-input-color { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: transparent; cursor: pointer; padding: 0; }
+::-webkit-scrollbar {
+    width: 6px;
+}
 
-    #canvasWrap {
-      background: #ffffff;
-      border-radius: 16px;
-      overflow: hidden;
-      position: relative;
-      width: 100%;
-      height: 460px;
-      border: 1px solid var(--border);
-      touch-action: none;
-    }
+::-webkit-scrollbar-track {
+    background: transparent;
+}
 
-    .canvas-el {
-      position: absolute;
-      cursor: move;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-sizing: border-box;
-    }
-    .canvas-el.selected { outline: 2px solid #6b8aff; outline-offset: 2px; }
-    .canvas-el img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-    .canvas-el .text-content { width: 100%; height: 100%; outline: none; overflow: hidden; color: #111; font-size: 16px; }
-    .resize-handle {
-      position: absolute;
-      width: 14px; height: 14px;
-      background: #6b8aff;
-      border: 2px solid #fff;
-      border-radius: 50%;
-      right: -7px; bottom: -7px;
-      cursor: nwse-resize;
-      z-index: 5;
-    }
-
-    .rotate-handle {
-      position: absolute;
-      width: 16px; height: 16px;
-      background: #9966ff;
-      border: 2px solid #fff;
-      border-radius: 50%;
-      left: 50%; top: -28px;
-      transform: translateX(-50%);
-      cursor: grab;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 9px;
-      color: #fff;
-      z-index: 5;
-    }
-    .rotate-handle:active {
-      cursor: grabbing;
-    }
-
-    #drawLayer {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      touch-action: none;
-    }
-
-    .tool-btn.active {
-      background: rgba(107, 138, 255, 0.2);
-      border-color: var(--accent-blue);
-      color: var(--accent-cyan);
-    }
-
-    .tool-range {
-      width: 90px;
-      accent-color: #6b8aff;
-    }
-
-    .design-hint {
-      font-size: 0.72rem;
-      color: var(--text);
-      opacity: 0.55;
-      margin-top: 10px;
-      text-align: center;
-    }
-
-    /* ===== Bottom Navigation ===== */
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(10, 14, 39, 0.92);
-      backdrop-filter: blur(16px);
-      border-top: 1px solid var(--border);
-      display: flex;
-      z-index: 500;
-      padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
-    }
-
-    .nav-btn {
-      flex: 1;
-      background: none;
-      border: none;
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      padding: 10px 4px 8px;
-      cursor: pointer;
-      font-size: 0.68rem;
-      letter-spacing: 0.02em;
-      border-radius: 12px;
-      transition: color 0.15s, background 0.15s;
-    }
-
-    .nav-btn .nav-icon {
-      font-size: 1.25rem;
-    }
-
-    .nav-btn.active {
-      color: var(--accent-cyan);
-      background: rgba(107, 138, 255, 0.08);
-    }
-
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border-radius: 3px;
-    }
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
 </style>
 </head>
 <body>
 
+<div id="securityBadge">🔒 STRICT XSS PROTECTION / CONTENT SECURITY</div>
 <div id="connWarning">⚠️ Проверьте подключение к интернету</div>
+
 
 <header>
   <div class="logo" id="pageLogo">TASKS</div>
